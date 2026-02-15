@@ -1,13 +1,12 @@
 """Market Data MCP Server using FastMCP.
 
 This server provides stock price and company search functionality using Finnhub API.
-It can be run standalone via stdio transport for MCP protocol communication.
+The MCP capabilities (tools, resources, prompts) are defined here and exposed via HTTP REST API.
 """
 
 from __future__ import annotations
 
 import os
-import sys
 from typing import Any, Dict, List, Optional
 
 from dotenv import load_dotenv
@@ -350,18 +349,13 @@ Provide a comparative analysis with recommendations."""
 
 
 if __name__ == "__main__":
-    # Run as standalone MCP server via stdio or SSE (streamable HTTP)
-    transport = os.getenv("MCP_TRANSPORT", "sse")
-    port = int(os.getenv("MCP_PORT", "9001"))
+    # This file defines MCP capabilities (tools, resources, prompts)
+    # Use start_server.py to run the HTTP REST API server
+    print("This module defines MCP tools, resources, and prompts.")
+    print("To start the HTTP REST API server, run:")
+    print("  python start_server.py")
+    print()
+    print("Or use:")
+    print("  python app/http_server.py")
 
-    if transport == "stdio":
-        log.info("app.server_starting %s", kv(transport=transport, server="market"))
-        mcp.run(transport="stdio")
-    elif transport == "sse":
-        log.info("app.server_starting %s", kv(transport=transport, port=port, server="market"))
-        mcp.run(transport="sse", port=port)
-    else:
-        log.error("app.unsupported_transport %s", kv(transport=transport))
-        print(f"Unsupported transport: {transport}. Use 'stdio' or 'sse'.")
-        sys.exit(1)
 

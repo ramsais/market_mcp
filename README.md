@@ -2,12 +2,23 @@
 
 A streamable HTTP MCP (Model Context Protocol) server that provides stock market data through the Finnhub API.
 
+## Architecture
+
+This server implements a **single source of truth** architecture:
+- All tools, resources, and prompts defined **once** in `app/server.py` using FastMCP decorators
+- HTTP REST API dynamically discovers capabilities via **introspection**
+- **Zero duplication** - no hardcoded definitions in the HTTP layer
+- Protocol-independent core logic
+
+See [ARCHITECTURE.md](ARCHITECTURE.md) for detailed architecture documentation.
+
 ## Features
 
 - **Tools**: Get stock prices, search companies
 - **Resources**: Popular stocks list, market indices
 - **Prompts**: Stock analysis and comparison prompts
-- **HTTP Streaming**: SSE (Server-Sent Events) transport on port 9001
+- **Dynamic Discovery**: HTTP endpoints automatically discover all MCP capabilities
+- **Multiple Transports**: HTTP REST API, stdio, and SSE support
 
 ## Setup
 

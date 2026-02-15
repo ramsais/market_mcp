@@ -1,21 +1,21 @@
 #!/usr/bin/env python3
 """Start the Market MCP REST API Server.
 
-This is the main entry point for starting the streamable HTTP REST API server.
+This is the main entry point for starting the HTTP REST API server.
 The server provides standard REST endpoints for stock market data.
 
 Usage:
     python start_server.py
 
 Endpoints:
-    - GET  /app/tools           - List all tools
-    - POST /app/tools/call      - Call a tool
-    - GET  /app/resources       - List all resources
-    - GET  /app/resources/{uri} - Get a resource
-    - GET  /app/prompts         - List all prompts
-    - POST /app/prompts/get     - Get a prompt
-    - GET  /health              - Health check
-    - GET  /docs                - Interactive API documentation
+    - GET  /mcp/tools             - List all tools
+    - POST /mcp/tools/call        - Call a tool
+    - GET  /mcp/resources         - List all resources
+    - GET  /mcp/resources/{uri}   - Get a resource
+    - GET  /mcp/prompts           - List all prompts
+    - POST /mcp/prompts/get       - Get a prompt
+    - GET  /health                - Health check
+    - GET  /docs                  - Interactive API documentation
 """
 
 import os
@@ -44,10 +44,12 @@ print(f"API Docs: http://localhost:{port}/docs")
 print("="*70)
 print()
 print("Available endpoints:")
-print(f"  GET  http://localhost:{port}/app/tools")
-print(f"  POST http://localhost:{port}/app/tools/call")
-print(f"  GET  http://localhost:{port}/app/resources")
+print(f"  GET  http://localhost:{port}/mcp/tools")
+print(f"  POST http://localhost:{port}/mcp/tools/call")
+print(f"  GET  http://localhost:{port}/mcp/resources")
+print(f"  GET  http://localhost:{port}/mcp/prompts")
 print(f"  GET  http://localhost:{port}/health")
+print(f"  GET  http://localhost:{port}/docs")
 print()
 print("Press Ctrl+C to stop the server")
 print("="*70)
