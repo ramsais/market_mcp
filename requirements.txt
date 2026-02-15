@@ -1,0 +1,18 @@
+# Market MCP Server Dependencies
+
+# FastMCP for Model Context Protocol
+fastmcp<3.0.0
+
+# Finnhub API client
+finnhub-python>=2.4.0
+
+# Environment variables
+python-dotenv>=1.0.0
+
+# HTTP REST API Server
+fastapi>=0.100.0
+uvicorn>=0.23.0
+
+# Shared dependencies
+requests
+pydantic

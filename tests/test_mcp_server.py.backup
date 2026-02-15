@@ -1,0 +1,322 @@
+"""Test cases for Market MCP Server HTTP endpoints and tools.
+
+This test suite validates:
+- MCP server initialization and listing endpoints
+- Tool discovery and execution
+- Resource access
+- Prompt generation
+- Error handling
+"""
+
+import json
+import os
+import time
+from typing import Any, Dict, List
+
+import requests
+
+# Server configuration
+BASE_URL = "http://localhost:9001"
+TIMEOUT = 30
+
+
+class MCPServerTester:
+    """Test harness for MCP server HTTP endpoints."""
+
+    def __init__(self, base_url: str = BASE_URL):
+        self.base_url = base_url
+        self.session = requests.Session()
+        self.session.headers.update({"Content-Type": "application/json"})
+
+    def wait_for_server(self, max_retries: int = 30, delay: float = 1.0) -> bool:
+        """Wait for the server to be ready."""
+        print(f"⏳ Waiting for server at {self.base_url}...")
+        for i in range(max_retries):
+            try:
+                response = self.session.get(f"{self.base_url}/health", timeout=2)
+                if response.status_code == 200:
+                    print(f"✅ Server is ready!")
+                    return True
+            except requests.exceptions.RequestException:
+                pass
+            time.sleep(delay)
+        print(f"❌ Server not ready after {max_retries} retries")
+        return False
+
+    def test_server_info(self) -> Dict[str, Any]:
+        """Test GET /app/v1/server/info - Get server information."""
+        print("\n" + "="*80)
+        print("TEST: Server Info Endpoint")
+        print("="*80)
+
+        try:
+            response = self.session.get(f"{self.base_url}/app/v1/server/info", timeout=TIMEOUT)
+            response.raise_for_status()
+            data = response.json()
+
+            print(f"✅ Status Code: {response.status_code}")
+            print(f"📋 Response: {json.dumps(data, indent=2)}")
+
+            assert "name" in data or "serverInfo" in data, "Server info should contain name or serverInfo"
+            return data
+        except Exception as e:
+            print(f"❌ Failed: {e}")
+            raise
+
+    def test_list_tools(self) -> List[Dict[str, Any]]:
+        """Test POST /app/v1/tools/list - List available tools."""
+        print("\n" + "="*80)
+        print("TEST: List Tools Endpoint")
+        print("="*80)
+
+        try:
+            payload = {"jsonrpc": "2.0", "id": 1, "method": "tools/list"}
+            response = self.session.post(f"{self.base_url}/app/v1/messages", json=payload, timeout=TIMEOUT)
+            response.raise_for_status()
+            data = response.json()
+
+            print(f"✅ Status Code: {response.status_code}")
+            print(f"📋 Response: {json.dumps(data, indent=2)}")
+
+            # Extract tools from the response
+            tools = data.get("result", {}).get("tools", [])
+            print(f"\n📊 Found {len(tools)} tools:")
+            for tool in tools:
+                print(f"  - {tool.get('name')}: {tool.get('description', 'No description')[:80]}")
+
+            assert len(tools) > 0, "Should have at least one tool"
+            return tools
+        except Exception as e:
+            print(f"❌ Failed: {e}")
+            raise
+
+    def test_call_tool(self, tool_name: str, arguments: Dict[str, Any]) -> Dict[str, Any]:
+        """Test POST /app/v1/tools/call - Call a specific tool."""
+        print("\n" + "="*80)
+        print(f"TEST: Call Tool - {tool_name}")
+        print("="*80)
+        print(f"Arguments: {json.dumps(arguments, indent=2)}")
+
+        try:
+            payload = {
+                "jsonrpc": "2.0",
+                "id": 2,
+                "method": "tools/call",
+                "params": {
+                    "name": tool_name,
+                    "arguments": arguments
+                }
+            }
+            response = self.session.post(f"{self.base_url}/app/v1/messages", json=payload, timeout=TIMEOUT)
+            response.raise_for_status()
+            data = response.json()
+
+            print(f"✅ Status Code: {response.status_code}")
+            print(f"📋 Response: {json.dumps(data, indent=2)}")
+
+            return data
+        except Exception as e:
+            print(f"❌ Failed: {e}")
+            raise
+
+    def test_list_resources(self) -> List[Dict[str, Any]]:
+        """Test GET /mcp/resources - List available resources."""
+        print("\n" + "="*80)
+        print("TEST: List Resources Endpoint")
+        print("="*80)
+
+        try:
+            response = self.session.get(f"{self.base_url}/mcp/resources", timeout=TIMEOUT)
+            response.raise_for_status()
+            data = response.json()
+
+            print(f"✅ Status Code: {response.status_code}")
+            print(f"📋 Response: {json.dumps(data, indent=2)}")
+
+            resources = data.get("resources", [])
+            print(f"\n📊 Found {len(resources)} resources:")
+            for resource in resources:
+                print(f"  - {resource.get('uri')}: {resource.get('name', 'No name')}")
+
+            return resources
+        except Exception as e:
+            print(f"❌ Failed: {e}")
+            raise
+
+    def test_read_resource(self, resource_uri: str) -> Dict[str, Any]:
+        """Test POST /app/v1/resources/read - Read a specific resource."""
+        print("\n" + "="*80)
+        print(f"TEST: Read Resource - {resource_uri}")
+        print("="*80)
+
+        try:
+            payload = {
+                "jsonrpc": "2.0",
+                "id": 4,
+                "method": "resources/read",
+                "params": {"uri": resource_uri}
+            }
+            response = self.session.post(f"{self.base_url}/app/v1/messages", json=payload, timeout=TIMEOUT)
+            response.raise_for_status()
+            data = response.json()
+
+            print(f"✅ Status Code: {response.status_code}")
+            print(f"📋 Response: {json.dumps(data, indent=2)}")
+
+            return data
+        except Exception as e:
+            print(f"❌ Failed: {e}")
+            raise
+
+    def test_list_prompts(self) -> List[Dict[str, Any]]:
+        """Test GET /mcp/prompts - List available prompts."""
+        print("\n" + "="*80)
+        print("TEST: List Prompts Endpoint")
+        print("="*80)
+
+        try:
+            response = self.session.get(f"{self.base_url}/mcp/prompts", timeout=TIMEOUT)
+            response.raise_for_status()
+            data = response.json()
+
+            print(f"✅ Status Code: {response.status_code}")
+            print(f"📋 Response: {json.dumps(data, indent=2)}")
+
+            prompts = data.get("prompts", [])
+            print(f"\n📊 Found {len(prompts)} prompts:")
+            for prompt in prompts:
+                print(f"  - {prompt.get('name')}: {prompt.get('description', 'No description')[:80]}")
+
+            return prompts
+        except Exception as e:
+            print(f"❌ Failed: {e}")
+            raise
+
+    def test_get_prompt(self, prompt_name: str, arguments: Dict[str, Any]) -> Dict[str, Any]:
+        """Test POST /mcp/prompts/get - Get a specific prompt."""
+        print("\n" + "="*80)
+        print(f"TEST: Get Prompt - {prompt_name}")
+        print("="*80)
+        print(f"Arguments: {json.dumps(arguments, indent=2)}")
+
+        try:
+            payload = {
+                "prompt": prompt_name,
+                "arguments": arguments
+            }
+            response = self.session.post(f"{self.base_url}/mcp/prompts/get", json=payload, timeout=TIMEOUT)
+            response.raise_for_status()
+            data = response.json()
+
+            print(f"✅ Status Code: {response.status_code}")
+            print(f"📋 Response preview: {json.dumps(data, indent=2)[:200]}...")
+
+            return data
+        except Exception as e:
+            print(f"❌ Failed: {e}")
+            raise
+
+    def run_all_tests(self):
+        """Run all test cases in sequence."""
+        print("\n" + "🚀" * 40)
+        print("MARKET MCP SERVER - COMPREHENSIVE TEST SUITE")
+        print("🚀" * 40)
+
+        try:
+            # Wait for server to be ready
+            if not self.wait_for_server():
+                print("\n❌ Server is not available. Please start the server first.")
+                return False
+
+            # Test 1: Server Info
+            self.test_server_info()
+
+            # Test 2: List Tools
+            tools = self.test_list_tools()
+
+            # Test 3: Call get_stock_price tool with symbol
+            self.test_call_tool("get_stock_price", {"symbol": "AAPL"})
+
+            # Test 4: Call get_stock_price tool with company name
+            self.test_call_tool("get_stock_price", {"company_name": "Apple"})
+
+            # Test 5: Call get_stock_price tool with multiple symbols
+            self.test_call_tool("get_stock_price", {"symbols": ["AAPL", "MSFT", "GOOGL"]})
+
+            # Test 6: Call search_company tool
+            self.test_call_tool("search_company", {"company_name": "Microsoft"})
+
+            # Test 7: List Resources
+            resources = self.test_list_resources()
+
+            # Test 8: Read Resources
+            if resources:
+                for resource in resources:
+                    self.test_read_resource(resource.get("uri"))
+
+            # Test 9: List Prompts
+            prompts = self.test_list_prompts()
+
+            # Test 10: Get Prompt - analyze_stock_performance
+            self.test_get_prompt("analyze_stock_performance", {"symbol": "AAPL"})
+
+            # Test 11: Get Prompt - compare_stocks
+            self.test_get_prompt("compare_stocks", {"symbols": ["AAPL", "MSFT"]})
+
+            # Test 12: Error handling - Invalid tool
+            print("\n" + "="*80)
+            print("TEST: Error Handling - Invalid Tool")
+            print("="*80)
+            try:
+                self.test_call_tool("invalid_tool", {})
+                print("❌ Should have raised an error for invalid tool")
+            except Exception as e:
+                print(f"✅ Correctly handled error: {e}")
+
+            # Test 13: Error handling - Missing arguments
+            print("\n" + "="*80)
+            print("TEST: Error Handling - Missing Arguments")
+            print("="*80)
+            try:
+                result = self.test_call_tool("get_stock_price", {})
+                # Check if error is in the result
+                if "error" in result or ("result" in result and result["result"].get("content")):
+                    print("✅ Tool handled missing arguments gracefully")
+            except Exception as e:
+                print(f"✅ Correctly handled error: {e}")
+
+            print("\n" + "🎉" * 40)
+            print("ALL TESTS COMPLETED SUCCESSFULLY!")
+            print("🎉" * 40)
+            return True
+
+        except Exception as e:
+            print("\n" + "💥" * 40)
+            print(f"TEST SUITE FAILED: {e}")
+            print("💥" * 40)
+            import traceback
+            traceback.print_exc()
+            return False
+
+
+def main():
+    """Main test runner."""
+    # Check if FINNHUB_API_KEY is set
+    if not os.getenv("FINNHUB_API_KEY"):
+        print("⚠️  Warning: FINNHUB_API_KEY not set in environment")
+        print("   Some tests may fail or return limited data")
+
+    tester = MCPServerTester()
+    success = tester.run_all_tests()
+
+    if success:
+        print("\n✅ All tests passed!")
+        exit(0)
+    else:
+        print("\n❌ Some tests failed!")
+        exit(1)
+
+
+if __name__ == "__main__":
+    main()
+
