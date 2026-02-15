@@ -30,17 +30,23 @@ from pydantic import BaseModel, field_validator
 import uvicorn
 from dotenv import load_dotenv
 
-# Import MCP instance and server functions
-from .server import mcp, _finnhub_client
+# Import MCP instance and new architecture components
+from .server import mcp
+from .config import settings
+from .models import HealthStatus, HealthResponse, ServiceHealth
+from .services import get_finnhub_service
 from .utils.logger import get_logger, kv, set_correlation_id
 
 load_dotenv(override=False)
 log = get_logger(__name__)
 
+# Get service instance
+finnhub_service = get_finnhub_service()
+
 app = FastAPI(
     title="Market MCP REST API",
     description="HTTP REST API for stock market data",
-    version="1.0.0"
+    version=settings.app_version
 )
 
 
@@ -152,15 +158,34 @@ async def root():
     }
 
 
-@app.get("/health")
+@app.get("/health", response_model=HealthResponse)
 async def health_check():
-    """Health check endpoint."""
-    finnhub_status = "connected" if _finnhub_client else "not_configured"
-    return {
-        "status": "healthy",
-        "finnhub": finnhub_status,
-        "server": "running"
-    }
+    """Enhanced health check endpoint with service status."""
+    import time
+
+    # Get Finnhub service health
+    finnhub_health = finnhub_service.health_check()
+
+    # Determine overall status
+    overall_status = HealthStatus.HEALTHY
+    if finnhub_health["status"] == "unhealthy":
+        overall_status = HealthStatus.DEGRADED
+
+    # Build service health list
+    services = [
+        ServiceHealth(
+            name="finnhub",
+            status=HealthStatus(finnhub_health["status"]),
+            message=finnhub_health.get("message"),
+            response_time_ms=finnhub_health.get("response_time_ms")
+        )
+    ]
+
+    return HealthResponse(
+        status=overall_status,
+        version=settings.app_version,
+        services=services
+    )
 
 
 @app.get("/mcp/tools")
